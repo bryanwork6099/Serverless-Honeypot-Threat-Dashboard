@@ -18,7 +18,7 @@ The project demonstrates serverless architecture, cloud security monitoring, thr
 
 | AWS Service | Purpose |
 |---|---|
-| Amazon API Gateway | Exposes public decoy HTTP endpoints |
+| Amazon API Gateway | Exposes public HTTP decoy endpoints |
 | AWS Lambda | Inspects requests and classifies suspicious activity |
 | Amazon DynamoDB | Stores security events and source IP activity |
 | Amazon CloudWatch Logs | Captures Lambda execution and security event logs |
@@ -54,6 +54,60 @@ The Lambda function examines incoming request paths and query strings against pr
 
 The solution also tracks repeated suspicious requests and applies severity escalation based on activity thresholds.
 
+## Architecture and Implementation Screenshots
+
+### 1. API Gateway – Decoy Endpoints
+
+Amazon API Gateway exposes the configured HTTP routes and integrates with the Lambda threat detection function.
+
+![API Gateway Routes](screenshots/01-api-gateway.png)
+
+### 2. DynamoDB – Security Event Storage
+
+The `HoneypotSecurityEvents` table stores detected security events, including source IP addresses, request paths, timestamps, severity levels, and attack categories.
+
+![DynamoDB Security Events](screenshots/02-security-events.png)
+
+### 3. DynamoDB – IP Activity Tracking
+
+The `HoneypotIPActivity` table tracks suspicious request counts by source IP within fixed five-minute windows.
+
+![DynamoDB IP Activity](screenshots/03-ip-activity.png)
+
+### 4. CloudWatch – Threat Metric Filters
+
+CloudWatch Metric Filters extract security event severity information from Lambda logs and publish custom metrics under the `HoneypotSecurityMetrics` namespace.
+
+**CRITICAL Threat Metric Filter**
+
+![CRITICAL Metric Filter](screenshots/04-01-critical-metric-filters.png)
+
+**HIGH Threat Metric Filter**
+
+![HIGH Metric Filter](screenshots/04-02-high-metric-filters.png)
+
+**MEDIUM Threat Metric Filter**
+
+![MEDIUM Metric Filter](screenshots/04-03-medium-metric-filters.png)
+
+### 5. CloudWatch – Security Dashboard
+
+The `HoneypotSecurityDashboard` provides centralized visibility into detected CRITICAL, HIGH, and MEDIUM threat activity.
+
+![Honeypot Security Dashboard](screenshots/05-security-dashboard.png)
+
+### 6. CloudWatch – Alarm Status
+
+The `Honeypot Alarm Status` dashboard displays the current state of all three threat monitoring alarms.
+
+![Honeypot Alarm Status](screenshots/06-alarm-status.png)
+
+### 7. Amazon SNS – Email Notifications
+
+Amazon SNS delivers automated email notifications when CloudWatch alarms transition into the ALARM state.
+
+![SNS Email Notification](screenshots/07-sns-notification.png)
+
 ## DynamoDB Data Storage
 
 ### 1. HoneypotSecurityEvents
@@ -85,7 +139,7 @@ Key attributes include:
 - `suspiciousCount`
 - `expiresAt`
 
-DynamoDB TTL is configured using `expiresAt` to allow expired activity records to be removed automatically.
+DynamoDB TTL is configured using `expiresAt` to allow expired activity records to be removed automatically. TTL deletion is asynchronous.
 
 ## Threat Monitoring and Alerting
 
@@ -113,7 +167,7 @@ The project includes a centralized CloudWatch dashboard named:
 
 `HoneypotSecurityDashboard`
 
-The dashboard contains four monitoring widgets:
+The monitoring setup includes:
 
 1. **Honeypot Alarm Status** – Displays the current status of all three CloudWatch alarms.
 2. **Critical Threat Activity** – Tracks CRITICAL threat metrics.
@@ -153,9 +207,8 @@ The HTTP API exposes selected routes for monitoring suspicious requests, includi
 
 The solution was tested using PowerShell HTTP requests.
 
-Example tests:
-
 **1. Reconnaissance Detection**
+
 ```powershell
 Invoke-RestMethod -Uri "$($API)/admin" -Method GET
 ```
@@ -163,6 +216,7 @@ Invoke-RestMethod -Uri "$($API)/admin" -Method GET
 Expected initial classification: `MEDIUM`
 
 **2. SQL Injection Detection**
+
 ```powershell
 Invoke-RestMethod -Uri "$($API)/login?username=admin%20OR%201=1" -Method GET
 ```
@@ -170,6 +224,7 @@ Invoke-RestMethod -Uri "$($API)/login?username=admin%20OR%201=1" -Method GET
 Expected initial classification: `HIGH`
 
 **3. Sensitive File Probing**
+
 ```powershell
 Invoke-RestMethod -Uri "$($API)/.env" -Method GET
 ```
